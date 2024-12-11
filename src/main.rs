@@ -77,7 +77,7 @@ impl CountXMAS for Matrix {
 }
 
 fn main() {
-    println!("Hello, aoc_2024_4!");
+    println!("Hello, aoc_2024_5!");
 
     if let Ok(lines) = read_lines("./src/input.txt") {
 
@@ -86,33 +86,36 @@ fn main() {
         };
 
         // Consumes the iterator, returns an ( Optional) String
+        let mut reading_ordering_rules = true;
         for line in lines.flatten() {
-            let characters:Vec<char> = line.chars().collect();
-            input_matrix.matrix.push(characters);
-        }
+            println!("{}", line);
 
-        let height = input_matrix.matrix.len();
-        println!("height {height}");
+            if line.is_empty() {
+                reading_ordering_rules = false;
+            } else {
+                if reading_ordering_rules {
+                    let ordering_rule_vec: Vec<i64> = line.split("|")
+                    .map(|x| x.parse().expect("Not an integer!"))
+                    .collect();
 
-        // We assume every row has the same number of columns.
-        let width = input_matrix.matrix[0].len();
-        println!("array width {width}");
+                    for input_int in ordering_rule_vec {
+                        print!("{input_int} ");
+                    }
+                } else {
+                    let production_vec: Vec<i64> = line.split(",")
+                    .map(|x| x.parse().expect("Not an integer!"))
+                    .collect();
 
-        println!("input_matrix is:\n{input_matrix:?}");
-
-        let mut count_found: u64 = 0;
-
-        for i in 0..height {
-            for j in 0..width {
-                if let Some(val) = input_matrix.get(i as i32,j as i32) {
-                    if *val == 'A' {
-                        count_found += input_matrix.count_at_pos(i,j);
+                    for input_int in production_vec {
+                        print!("{input_int} ");
                     }
                 }
             }
         }
 
-        println!("count_found {count_found}");
+
+
+        println!("done");
 
     } else {
         if let Ok(path) = env::current_dir() {
