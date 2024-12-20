@@ -1,89 +1,20 @@
-use std::fmt;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use std::env;
+use multimap::MultiMap;
 
-struct Matrix {
-    matrix: Vec<Vec<char>>,
-}
-
-impl fmt::Debug for Matrix {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let height = self.matrix.len();
-        let width = self.matrix[0].len();
-        for i in 0..height {
-            for j in 0..width {
-                let val = self.matrix[i][j];
-                write!(f, "{val} ");
-            }
-            writeln!(f);
-        }
-        Ok(())
-    }
-}
-
-trait Get {
-    fn get(&self, i: i32, j: i32) -> Option<&char>;
-}
-
-impl Get for Matrix {
-    fn get(&self, i: i32, j: i32) -> Option<&char> {
-        if i < 0 || j < 0 {
-            return None;
-        }
-        let mut x: Option<&char> = None;
-        let row = self.matrix.get(i as usize);
-        if row.is_some() {
-            x = row.unwrap().get(j as usize);
-        }
-        return x;
-    }
-}
-
-trait CountXMAS {
-    fn count_at_pos(&self, i: usize, j: usize) -> u64;
-}
-
-impl CountXMAS for Matrix {
-    fn count_at_pos( &self, i: usize, j: usize) -> u64 {
-
-        fn check_with_delta( matrix : &Matrix, i: i32, j: i32, deltai: i32, deltaj: i32 ) -> bool {
-            if let Some(c) = matrix.get(i+deltai, j-deltaj) {
-                if *c == 'M' {
-                    if let Some(c) = matrix.get(i-deltai, j+deltaj) {
-                        if *c == 'S' {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-
-        let mut count: u64 = 0;
-
-        let left = check_with_delta(&self, i as i32,j as i32, 1, 1) || check_with_delta(&self, i as i32,j as i32, -1, -1);
-
-        let right = check_with_delta(&self, i as i32,j as i32, 1, -1) || check_with_delta(&self, i as i32,j as i32, -1, 1);
-
-        if left && right {
-            count += 1;
-        }
-
-        return count;
-    }
-}
 
 fn main() {
     println!("Hello, aoc_2024_5!");
 
     if let Ok(lines) = read_lines("./src/input.txt") {
 
-        let mut input_matrix = Matrix {
-            matrix : Vec::new(),
-        };
+        let mut updates = Vec::new();
+
+        let mut ordering_rules : MultiMap<i64,i64> = MultiMap::new();
+
+        println!("Raw:");
 
         // Consumes the iterator, returns an ( Optional) String
         let mut reading_ordering_rules = true;
@@ -98,24 +29,64 @@ fn main() {
                     .map(|x| x.parse().expect("Not an integer!"))
                     .collect();
 
-                    for input_int in ordering_rule_vec {
-                        print!("{input_int} ");
-                    }
+                    let lower = ordering_rule_vec[0];
+                    let upper = ordering_rule_vec[1];
+
+                    // We want to be able to look up violations of rules later.
+                    ordering_rules.insert(upper, lower);
+
                 } else {
-                    let production_vec: Vec<i64> = line.split(",")
+                    let update_vec: Vec<i64> = line.split(",")
                     .map(|x| x.parse().expect("Not an integer!"))
                     .collect();
 
-                    for input_int in production_vec {
-                        print!("{input_int} ");
-                    }
+                    updates.push(update_vec);
                 }
             }
         }
 
+        println!("Processed:");
 
+        for (upper, lowers) in &ordering_rules {
+            print!("upper {upper}: ");
+            for lower in lowers {
+                print!("{lower} ");
+            }
+            println!();
+        }
 
-        println!("done");
+        let mut countGood = 0;
+        let mut sumGoodMiddles = 0;
+
+        for update in updates {
+
+            let mut good = true;
+            for outer_index in 0 .. update.len() {
+
+                let page_at_outer = update[outer_index];
+
+                let optional_prohibitions_for_output_page = ordering_rules.get_vec(&page_at_outer);
+                if optional_prohibitions_for_output_page.is_some() {
+                    let prohibitions_for_output_page = optional_prohibitions_for_output_page.unwrap();
+                    print!("outer_index {outer_index} page_at_outer {page_at_outer} inner_index[");
+                    for inner_index in outer_index+1 .. update.len() {
+                        let page_at_inner = update[inner_index];
+                        print!("inner_index {inner_index} page_at_inner{page_at_inner}");
+                        if prohibitions_for_output_page.contains(&page_at_inner) {
+                            good = false;
+                        }
+                    }
+                    print!("] ");
+                }
+            }
+            if good {
+                countGood += 1;
+                sumGoodMiddles += update[update.len()/2];
+            }
+            println!()
+        }
+
+        println!("done countGood {countGood} sumGoodMiddles {sumGoodMiddles}");
 
     } else {
         if let Ok(path) = env::current_dir() {
