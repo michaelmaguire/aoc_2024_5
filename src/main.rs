@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use std::env;
 use multimap::MultiMap;
-
+use std::cmp::Ordering;
 
 fn main() {
     println!("Hello, aoc_2024_5!");
@@ -14,12 +14,12 @@ fn main() {
 
         let mut ordering_rules : MultiMap<i64,i64> = MultiMap::new();
 
-        println!("Raw:");
+        //println!("Raw:");
 
         // Consumes the iterator, returns an ( Optional) String
         let mut reading_ordering_rules = true;
         for line in lines.flatten() {
-            println!("{}", line);
+            //println!("{}", line);
 
             if line.is_empty() {
                 reading_ordering_rules = false;
@@ -45,48 +45,79 @@ fn main() {
             }
         }
 
-        println!("Processed:");
+        println!("\nordering_rules multimap:");
 
         for (upper, lowers) in &ordering_rules {
-            print!("upper {upper}: ");
-            for lower in lowers {
-                print!("{lower} ");
-            }
-            println!();
+            println!("upper {upper}: {:?}", lowers);
         }
 
-        let mut countGood = 0;
-        let mut sumGoodMiddles = 0;
+        println!("\nupdates:");
 
-        for update in updates {
+        for update in &updates {
+            println!("{:?}", update);
+        }
+
+        let mut count_good = 0;
+        let mut sum_good_middles = 0;
+
+        let mut count_adjusted = 0;
+        let mut sum_adjusted_middles = 0;
+
+        for mut update in updates {
+
+            println!("\nSTART CHECKING update {:?}", update);
 
             let mut good = true;
             for outer_index in 0 .. update.len() {
-
-                let page_at_outer = update[outer_index];
-
-                let optional_prohibitions_for_output_page = ordering_rules.get_vec(&page_at_outer);
+                let val_at_outer = update[outer_index];
+                let optional_prohibitions_for_output_page = ordering_rules.get_vec(&val_at_outer);
                 if optional_prohibitions_for_output_page.is_some() {
                     let prohibitions_for_output_page = optional_prohibitions_for_output_page.unwrap();
-                    print!("outer_index {outer_index} page_at_outer {page_at_outer} inner_index[");
-                    for inner_index in outer_index+1 .. update.len() {
-                        let page_at_inner = update[inner_index];
-                        print!("inner_index {inner_index} page_at_inner{page_at_inner}");
-                        if prohibitions_for_output_page.contains(&page_at_inner) {
+                    println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} PROHIBITIONS MUST BE AFTER {:?}", update, prohibitions_for_output_page);
+                    let mut inner_index = outer_index +1;
+                    while inner_index < update.len() {
+                        let val_at_inner = update[inner_index];
+                        println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} inner_index {inner_index} val_at_inner {val_at_inner}", update);
+                        if prohibitions_for_output_page.contains(&val_at_inner) {
                             good = false;
+                            break;
+                        } else {
+                            inner_index += 1;
                         }
                     }
-                    print!("] ");
+                } else {
+                    println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} NO PROHIBITIONS", update);
                 }
             }
+
             if good {
-                countGood += 1;
-                sumGoodMiddles += update[update.len()/2];
+                count_good += 1;
+                let middle_val = update[update.len()/2];
+                sum_good_middles += middle_val;
+                println!("\n===>GOOD update {:?} middle_val {middle_val} sum_good_middles {sum_good_middles}", update);
+            } else {
+                update.sort_by( | a, b| {
+                    match ordering_rules.get_vec(&a) {
+                        Some(rules) => {
+                            if rules.contains(&b) {
+                                return Ordering::Greater;
+                            } else {
+                                return Ordering::Equal;
+                            }
+                        },
+                        None => return Ordering::Equal,
+                    }
+                    });
+
+                count_adjusted += 1;
+                let middle_val = update[update.len()/2];
+                sum_adjusted_middles += middle_val;
+                println!("\n===>ADJUSTED update {:?} middle_val {middle_val} sum_adjusted_middles {sum_adjusted_middles}", update);
             }
             println!()
         }
 
-        println!("done countGood {countGood} sumGoodMiddles {sumGoodMiddles}");
+        println!("done count_good {count_good} sum_good_middles {sum_good_middles} count_adjusted {count_adjusted} sum_adjusted_middles {sum_adjusted_middles}");
 
     } else {
         if let Ok(path) = env::current_dir() {
