@@ -133,13 +133,17 @@ fn kahn_sort( original_adjacency_matrix : &AdjencyMatrix) -> Vec<usize> {
     return l;
 }
 
-fn sorted_subset(sorted_elements : &Vec<usize>, unsorted_subset : &Vec<usize>) -> Vec<usize> {
+fn sorted_subset(sorted_elements : &Vec<usize>, original_unsorted_subset : &Vec<usize>) -> Vec<usize> {
     let mut sorted_subs: Vec<usize> = Vec::new();
+    let mut unsorted_subset = original_unsorted_subset.clone();
     for i in sorted_elements {
         if unsorted_subset.contains(i) {
             sorted_subs.push(*i);
+            unsorted_subset.remove(*i);
         }
     }
+    sorted_subs.append(&mut unsorted_subset);
+
     return sorted_subs;
 }
 
@@ -236,8 +240,9 @@ fn main() {
                 sum_good_middles += middle_val;
                 println!("\n===>GOOD update {:?} middle_val {middle_val} sum_good_middles {sum_good_middles}", update);
             } else {
-                let sorted_update = sorted_subset(&sorted_nodes, &update);
                 count_adjusted += 1;
+                let sorted_update = sorted_subset(&sorted_nodes, &update);
+                println!("\n===>ADJUSTED update {:?} sorted_update {:?}", update, sorted_update);
                 let middle_val = sorted_update[sorted_update.len()/2];
                 sum_adjusted_middles += middle_val;
                 println!("\n===>ADJUSTED update {:?} middle_val {middle_val} sum_adjusted_middles {sum_adjusted_middles}", sorted_update);
