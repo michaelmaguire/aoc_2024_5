@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -134,17 +135,27 @@ fn kahn_sort( original_adjacency_matrix : &AdjencyMatrix) -> Vec<usize> {
 }
 
 fn sorted_subset(sorted_elements : &Vec<usize>, original_unsorted_subset : &Vec<usize>) -> Vec<usize> {
-    let mut sorted_subs: Vec<usize> = Vec::new();
     let mut unsorted_subset = original_unsorted_subset.clone();
-    for i in sorted_elements {
-        if unsorted_subset.contains(i) {
-            sorted_subs.push(*i);
-            unsorted_subset.remove(*i);
-        }
-    }
-    sorted_subs.append(&mut unsorted_subset);
 
-    return sorted_subs;
+    unsorted_subset.sort_by( | a, b| {
+        match sorted_elements.iter().position(|&x| x == *a) {
+            None => return Ordering::Equal,
+            Some(pos_a) => {
+                match sorted_elements.iter().position(|&x| x == *b) {
+                    None => return Ordering::Equal,
+                    Some(pos_b) => {
+                        if pos_a <= pos_b {
+                            return Ordering::Less;
+                        } else {
+                            return Ordering::Greater;
+                        }
+                    }
+                }
+            }
+        }
+    } );
+
+    return unsorted_subset;
 }
 
 
