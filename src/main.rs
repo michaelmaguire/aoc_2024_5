@@ -32,8 +32,11 @@ trait Directed {
     fn set_directed(&mut self, source: usize, destination: usize);
     fn clear_directed(&mut self, source: usize, destination: usize);
     fn get_directed(&self, source: usize, destination: usize) -> bool;
+    fn get_destinations_for(&self, source: usize) -> Vec<usize>;
     fn get_sources_for(&self, destination: usize) -> Vec<usize>;
-}
+    fn has_sources(&self, destination: usize) -> bool ;
+    fn get_destinations_without_sources(&self) -> Vec<usize>;
+    }
 
 impl Directed for AdjencyMatrix {
     fn set_directed(&mut self, source: usize, destination: usize) {
@@ -45,6 +48,15 @@ impl Directed for AdjencyMatrix {
     fn get_directed(&self, source: usize, destination: usize) -> bool {
         return self.matrix[source][destination];
     }
+    fn get_destinations_for(&self, source: usize) -> Vec<usize> {
+        let mut destinations = Vec::new();
+        for destination in 0 .. self.matrix.len() {
+            if self.get_directed(source, destination) {
+                destinations.push(destination);
+            }
+        }
+        return destinations; 
+    }
     fn get_sources_for(&self, destination: usize) -> Vec<usize> {
         let mut sources = Vec::new();
         for source in 0 .. self.matrix.len() {
@@ -54,6 +66,24 @@ impl Directed for AdjencyMatrix {
         }
         return sources; 
     }
+    fn has_sources(&self, destination: usize) -> bool {
+        for source in 0 .. self.matrix.len() {
+            if self.get_directed(source, destination) {
+                return true;
+            }
+        }
+        return false;
+    }
+    fn get_destinations_without_sources(&self) -> Vec<usize> {
+        let mut destinations_without_sources = Vec::new();
+        for destination in 0.. self.matrix.len() {
+            if ! self.has_sources(destination) {
+                destinations_without_sources.push(destination);
+            }
+        }
+        return destinations_without_sources;
+    }
+
 }
 
 impl AdjencyMatrix {
@@ -66,36 +96,51 @@ impl AdjencyMatrix {
     }
 }
 
+impl Clone for AdjencyMatrix {
+    fn clone(&self) -> Self {
+        let mut matrix = Vec::new();
+        for r in 1 .. self.matrix.len() {
+            matrix.push( self.matrix[r].clone() );
+        }
+        Self { matrix }
+    }    
+}
+
+
 // https://en.wikipedia.org/wiki/Topological_sorting
-fn kahn_sort( adjacency_matrix : &AdjencyMatrix, nodes: &Vec<usize>) -> Vec<usize> {
-    /*
-        let mut l: Vec<i64> = Vec::new();
-        let mut s: Vec<i64> = Vec::new();
-        let mut directed_edges = original_directed_edges.clone();
-        let mut directed_edges_reversed = original_directed_edges_reversed.clone();
+fn kahn_sort( original_adjacency_matrix : &AdjencyMatrix) -> Vec<usize> {
 
-        directed_edges.remove(&17);
+    let mut adjacency_matrix: AdjencyMatrix = original_adjacency_matrix.clone();
 
-        // Fill s with all nodes that have no incoming edge.
-        for node in nodes {
-            if ! directed_edges_reversed.contains_key(node) {
-                s.push(*node);
+    let mut l: Vec<usize> = Vec::new();
+    let mut s = adjacency_matrix.get_destinations_without_sources();
+
+    println!("s after populating: {:?}", s);
+
+    while ! s.is_empty() {
+        let n = s.remove(s.len()-1);
+        l.push(n);
+        
+        let destinations_for_n = adjacency_matrix.get_destinations_for(n);
+        for m in destinations_for_n {
+            adjacency_matrix.clear_directed(n,m);
+            if ! adjacency_matrix.has_sources(m) {
+                s.push(m);
             }
         }
-        println!("s after populating: {:?}", s);
+    }
 
-        while ! s.is_empty() {
-            let item = s.remove(s.len()-1);
-            l.push(item);
-            
-            let optional_directed_edges_reversed = directed_edges_reversed.get_vec(&item);
-            if optional_directed_edges_reversed.is_some() {
+    return l;
+}
 
-
-            }
+fn sorted_subset(sorted_elements : &Vec<usize>, unsorted_subset : &Vec<usize>) -> Vec<usize> {
+    let mut sorted_subs: Vec<usize> = Vec::new();
+    for i in sorted_elements {
+        if unsorted_subset.contains(i) {
+            sorted_subs.push(*i);
         }
-    */
-        return nodes.clone();
+    }
+    return sorted_subs;
 }
 
 
@@ -155,6 +200,10 @@ fn main() {
         let mut count_adjusted = 0;
         let mut sum_adjusted_middles = 0;
 
+        let sorted_nodes = kahn_sort(&adjacency_matrix);
+
+        println!("\nsorted_nodes {:?}", sorted_nodes);
+
         for update in updates {
 
             println!("\nSTART CHECKING update {:?}", update);
@@ -187,11 +236,11 @@ fn main() {
                 sum_good_middles += middle_val;
                 println!("\n===>GOOD update {:?} middle_val {middle_val} sum_good_middles {sum_good_middles}", update);
             } else {
-                let sorted = kahn_sort(&adjacency_matrix, &update);
+                let sorted_update = sorted_subset(&sorted_nodes, &update);
                 count_adjusted += 1;
-                let middle_val = sorted[sorted.len()/2];
+                let middle_val = sorted_update[sorted_update.len()/2];
                 sum_adjusted_middles += middle_val;
-                println!("\n===>ADJUSTED update {:?} middle_val {middle_val} sum_adjusted_middles {sum_adjusted_middles}", sorted);
+                println!("\n===>ADJUSTED update {:?} middle_val {middle_val} sum_adjusted_middles {sum_adjusted_middles}", sorted_update);
             }
             println!()
         }
