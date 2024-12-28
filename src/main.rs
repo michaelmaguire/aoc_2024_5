@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use std::env;
+use std::collections::HashSet;
 
 #[derive(Default)]
 struct AdjencyMatrix {
@@ -37,6 +38,7 @@ trait Directed {
     fn get_sources_for(&self, destination: usize) -> Vec<usize>;
     fn has_sources(&self, destination: usize) -> bool ;
     fn get_destinations_without_sources(&self) -> Vec<usize>;
+    fn get_all_nodes(&self) -> Vec<usize>;
     }
 
 impl Directed for AdjencyMatrix {
@@ -84,6 +86,18 @@ impl Directed for AdjencyMatrix {
         }
         return destinations_without_sources;
     }
+    fn get_all_nodes(&self) -> Vec<usize> {
+        let mut set = HashSet::new();
+        for i in 0..self.matrix.len() {
+            for j in 0 .. self.matrix.len() {
+                if self.matrix[i][j] {
+                    set.insert(i);
+                    set.insert(j);
+                }
+            }
+        }
+        return Vec::from_iter(set);
+    }
 
 }
 
@@ -106,59 +120,6 @@ impl Clone for AdjencyMatrix {
         Self { matrix }
     }    
 }
-
-
-// https://en.wikipedia.org/wiki/Topological_sorting
-fn kahn_sort( original_adjacency_matrix : &AdjencyMatrix) -> Vec<usize> {
-
-    let mut adjacency_matrix: AdjencyMatrix = original_adjacency_matrix.clone();
-
-    let mut l: Vec<usize> = Vec::new();
-    let mut s = adjacency_matrix.get_destinations_without_sources();
-
-    println!("s after populating: {:?}", s);
-
-    while ! s.is_empty() {
-        let n = s.remove(s.len()-1);
-        l.push(n);
-        
-        let destinations_for_n = adjacency_matrix.get_destinations_for(n);
-        for m in destinations_for_n {
-            adjacency_matrix.clear_directed(n,m);
-            if ! adjacency_matrix.has_sources(m) {
-                s.push(m);
-            }
-        }
-    }
-
-    return l;
-}
-
-fn sorted_subset(sorted_elements : &Vec<usize>, original_unsorted_subset : &Vec<usize>) -> Vec<usize> {
-    let mut unsorted_subset = original_unsorted_subset.clone();
-
-    unsorted_subset.sort_by( | a, b| {
-        match sorted_elements.iter().position(|&x| x == *a) {
-            None => return Ordering::Equal,
-            Some(pos_a) => {
-                match sorted_elements.iter().position(|&x| x == *b) {
-                    None => return Ordering::Equal,
-                    Some(pos_b) => {
-                        if pos_a <= pos_b {
-                            return Ordering::Less;
-                        } else {
-                            return Ordering::Greater;
-                        }
-                    }
-                }
-            }
-        }
-    } );
-
-    return unsorted_subset;
-}
-
-
 
 fn main() {
     println!("Hello, aoc_2024_5!");
@@ -215,24 +176,32 @@ fn main() {
         let mut count_adjusted = 0;
         let mut sum_adjusted_middles = 0;
 
-        let sorted_nodes = kahn_sort(&adjacency_matrix);
-
-        println!("\nsorted_nodes {:?}", sorted_nodes);
+        let compare = | x: &usize, y:&usize | {
+            let (x,y) = (*x, *y);
+            if adjacency_matrix.get_directed(x, y) {
+                Ordering::Less
+            } else if adjacency_matrix.get_directed(y, x) {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        };
+                
 
         for update in updates {
 
-            println!("\nSTART CHECKING update {:?}", update);
+            //println!("\nSTART CHECKING update {:?}", update);
 
             let mut good = true;
             for outer_index in 0 .. update.len() {
                 let val_at_outer = update[outer_index];
                 let prohibitions_for_output_page = adjacency_matrix.get_sources_for(val_at_outer);
                 if ! prohibitions_for_output_page.is_empty() {
-                    println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} PROHIBITIONS MUST BE AFTER {:?}", update, prohibitions_for_output_page);
+                    //println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} PROHIBITIONS MUST BE AFTER {:?}", update, prohibitions_for_output_page);
                     let mut inner_index = outer_index +1;
                     while inner_index < update.len() {
                         let val_at_inner = update[inner_index];
-                        println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} inner_index {inner_index} val_at_inner {val_at_inner}", update);
+                        //println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} inner_index {inner_index} val_at_inner {val_at_inner}", update);
                         if prohibitions_for_output_page.contains(&val_at_inner) {
                             good = false;
                             break;
@@ -241,7 +210,7 @@ fn main() {
                         }
                     }
                 } else {
-                    println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} NO PROHIBITIONS", update);
+                    //println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} NO PROHIBITIONS", update);
                 }
             }
 
@@ -249,14 +218,15 @@ fn main() {
                 count_good += 1;
                 let middle_val = update[update.len()/2];
                 sum_good_middles += middle_val;
-                println!("\n===>GOOD update {:?} middle_val {middle_val} sum_good_middles {sum_good_middles}", update);
+                //println!("\n===>GOOD update {:?} middle_val {middle_val} sum_good_middles {sum_good_middles}", update);
             } else {
                 count_adjusted += 1;
-                let sorted_update = sorted_subset(&sorted_nodes, &update);
-                println!("\n===>ADJUSTED update {:?} sorted_update {:?}", update, sorted_update);
+                println!("ADJUSTED update before sort_by {:?}", update);
+                let mut sorted_update = update.clone();
+                sorted_update.sort_by(compare);
                 let middle_val = sorted_update[sorted_update.len()/2];
                 sum_adjusted_middles += middle_val;
-                println!("\n===>ADJUSTED update {:?} middle_val {middle_val} sum_adjusted_middles {sum_adjusted_middles}", sorted_update);
+                println!("ADJUSTED sorted_update         {:?} middle_val {middle_val} sum_adjusted_middles {sum_adjusted_middles}", sorted_update);
             }
             println!()
         }
