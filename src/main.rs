@@ -192,29 +192,7 @@ fn main() {
 
             //println!("\nSTART CHECKING update {:?}", update);
 
-            let mut good = true;
-            for outer_index in 0 .. update.len() {
-                let val_at_outer = update[outer_index];
-                let prohibitions_for_output_page = adjacency_matrix.get_sources_for(val_at_outer);
-                if ! prohibitions_for_output_page.is_empty() {
-                    //println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} PROHIBITIONS MUST BE AFTER {:?}", update, prohibitions_for_output_page);
-                    let mut inner_index = outer_index +1;
-                    while inner_index < update.len() {
-                        let val_at_inner = update[inner_index];
-                        //println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} inner_index {inner_index} val_at_inner {val_at_inner}", update);
-                        if prohibitions_for_output_page.contains(&val_at_inner) {
-                            good = false;
-                            break;
-                        } else {
-                            inner_index += 1;
-                        }
-                    }
-                } else {
-                    //println!("update {:?} outer_index {outer_index} val_at_outer {val_at_outer} NO PROHIBITIONS", update);
-                }
-            }
-
-            if good {
+            if update.is_sorted_by(|a, b| compare(a, b) != Ordering::Greater) {
                 count_good += 1;
                 let middle_val = update[update.len()/2];
                 sum_good_middles += middle_val;
